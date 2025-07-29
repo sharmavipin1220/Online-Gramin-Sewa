@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="description" content="Admin panel to manage user form submissions on Gramin Sewa Portal.">
+  <title>📊 Gramin Sewa Admin Panel</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #f1f8e9;
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+      color: #2e7d32;
+    }
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    .filters input, .filters select {
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 1rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.1);
+    }
+    th, td {
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid #eee;
+      font-size: 0.95rem;
+    }
+    th {
+      background: #c8e6c9;
+    }
+    .status {
+      padding: 4px 8px;
+      border-radius: 8px;
+      color: white;
+      font-size: 0.8rem;
+      text-align: center;
+      cursor: pointer;
+    }
+    .pending { background: #ff9800; }
+    .done { background: #4caf50; }
+    #logoutBtn {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: #f44336;
+      color: white;
+      padding: 8px 14px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    @media (max-width: 768px) {
+      table, thead, tbody, th, td, tr {
+        display: block;
+      }
+      tr {
+        margin-bottom: 15px;
+        border: 1px solid #ccc;
+        border-radius: 10px;
+        padding: 10px;
+      }
+      td {
+        border: none;
+        padding: 6px 10px;
+      }
+      td::before {
+        content: attr(data-label);
+        font-weight: bold;
+        display: block;
+        margin-bottom: 5px;
+        color: #2e7d32;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h2>📋 Submitted Forms</h2>
+  <button id="logoutBtn">🚪 Logout</button>
+
+  <div class="filters">
+    <input type="text" id="searchInput" placeholder="🔍 Search by name..." />
+    <select id="statusFilter">
+      <option value="">Filter by status</option>
+      <option value="pending">Pending</option>
+      <option value="done">Done</option>
+    </select>
+  </div>
+
+  <table id="dataTable">
+    <thead>
+      <tr>
+        <th>👤 Name</th>
+        <th>📞 Mobile</th>
+        <th>📍 Address</th>
+        <th>📝 Message</th>
+        <th>⚙️ Status</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+    import {
+      getFirestore, collection, getDocs, updateDoc, doc
+    } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+    import {
+      getAuth, signOut, onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "YOUR-KEY-HERE",
+      authDomain: "YOUR-AUTH-DOMAIN",
+      projectId: "YOUR-PROJECT-ID",
+      storageBucket: "YOUR-BUCKET",
+      messagingSenderId: "YOUR-SENDER-ID",
+      appId: "YOUR-APP-ID"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    const dataTable = document.querySelector("#dataTable tbody");
+    const searchInput = document.getElementById("searchInput");
+    const statusFilter = document.getElementById("statusFilter");
+
+    function renderTable(data) {
+      dataTable.innerHTML = "";
+      data.forEach(docSnap => {
+        const data = docSnap.data();
+        const row = document.createElement("tr");
+
+        row.innerHTML = `
+          <td data-label="Name">${data.name}</td>
+          <td data-label="Mobile">${data.mobile}</td>
+          <td data-label="Address">${data.address}</td>
+          <td data-label="Message">${data.message}</td>
+          <td data-label="Status">
+            <div class="status ${data.status}" data-id="${docSnap.id}">${data.status}</div>
+          </td>
+        `;
+        dataTable.appendChild(row);
+      });
+    }
+
+    async function loadData() {
+      const snapshot = await getDocs(collection(db, "submissions"));
+      allData = snapshot.docs;
+      applyFilters();
+    }
+
+    let allData = [];
+    function applyFilters() {
+      const keyword = searchInput.value.toLowerCase();
+      const statusVal = statusFilter.value;
+
+      const filtered = allData.filter(doc => {
+        const d = doc.data();
+        return (
+          d.name.toLowerCase().includes(keyword) &&
+          (statusVal === "" || d.status === statusVal)
+        );
+      });
+
+      renderTable(filtered);
+    }
+
+    dataTable.addEventListener("click", async (e) => {
+      if (e.target.classList.contains("status")) {
+        const id = e.target.dataset.id;
+        const newStatus = e.target.classList.contains("pending") ? "done" : "pending";
+        await updateDoc(doc(db, "submissions", id), { status: newStatus });
+        loadData();
+      }
+    });
+
+    searchInput.addEventListener("input", applyFilters);
+    statusFilter.addEventListener("change", applyFilters);
+
+    document.getElementById("logoutBtn").addEventListener("click", async () => {
+      await signOut(auth);
+      window.location.href = "admin-auth.html";
+    });
+
+    onAuthStateChanged(auth, user => {
+      if (!user) window.location.href = "admin-auth.html";
+      else loadData();
+    });
+  </script>
+</body>
+</html>

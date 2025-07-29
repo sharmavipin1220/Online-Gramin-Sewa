@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>सेवा आवेदन | Gramin Sewa Kendra</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: 'Poppins', sans-serif;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      background: #f9fbe7;
+      padding-top: 80px;
+      min-height: 100vh;
+    }
+    .header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: #2e7d32;
+      color: white;
+      text-align: center;
+      padding: 16px;
+      font-size: 1.2rem;
+      font-weight: bold;
+      z-index: 1000;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+    .container {
+      max-width: 600px;
+      margin: auto;
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+      color: #2e7d32;
+    }
+    label {
+      display: block;
+      margin-top: 12px;
+      font-weight: 500;
+    }
+    input, textarea, select {
+      width: 100%;
+      padding: 10px;
+      margin-top: 6px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    button {
+      margin-top: 20px;
+      width: 100%;
+      padding: 12px;
+      background: #4caf50;
+      color: white;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #388e3c;
+    }
+    .documents {
+      background: #f1f8e9;
+      padding: 12px;
+      border-radius: 8px;
+      margin-top: 16px;
+      border: 1px dashed #c5e1a5;
+    }
+    .documents ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header" id="headerTitle">📄 सेवा आवेदन</div>
+
+  <div class="container">
+    <h2 id="formHeading">सेवा आवेदन फॉर्म</h2>
+
+    <form id="serviceForm">
+      <label>पूरा नाम</label>
+      <input type="text" name="name" required />
+
+      <label>मोबाइल नंबर</label>
+      <input type="tel" name="mobile" required pattern="[0-9]{10}" />
+
+      <label>पता</label>
+      <textarea name="address" rows="3" required></textarea>
+
+      <label>सेवा का नाम</label>
+      <input type="text" name="service" id="serviceField" readonly />
+
+      <div class="documents" id="documentsSection">
+        <strong>📎 आवश्यक दस्तावेज़:</strong>
+        <ul id="documentList">
+          <li>Loading...</li>
+        </ul>
+      </div>
+
+      <label>दस्तावेज़ अपलोड करें (PDF/Images)</label>
+      <input type="file" name="files" multiple accept=".pdf,image/*" />
+
+      <button type="submit">📤 सबमिट करें</button>
+    </form>
+  </div>
+
+  <script>
+    // Map for service -> required documents
+    const documentRequirements = {
+      "PAN Card": ["आधार कार्ड", "पासपोर्ट साइज फोटो", "सिग्नेचर"],
+      "Aadhaar Address Update": ["पुराना आधार कार्ड", "नया एड्रेस प्रूफ"],
+      "Bijli Bill": ["पिछला बिल", "उपभोक्ता संख्या"],
+      "Mobile Recharge": ["मोबाइल नंबर", "प्लान जानकारी"],
+      "DTH Recharge": ["DTH ID", "ऑपरेटर नाम"],
+      "PM Kisan": ["आधार कार्ड", "भूमि का कागज", "बैंक पासबुक"],
+      "Jati / Niwas / Aay": ["आधार कार्ड", "राशन कार्ड", "आय प्रमाण पत्र"],
+      "Old Age Pension": ["आधार कार्ड", "बैंक पासबुक", "उम्र प्रमाण पत्र"],
+      "Insurance": ["आईडी प्रूफ", "प्रीमियम पर्ची"],
+      "Loan Repayment": ["बैंक स्टेटमेंट", "लोन खाता संख्या"],
+      "E-Shram Card": ["आधार कार्ड", "बैंक पासबुक", "मोबाइल नंबर"],
+      "Labour Card": ["आधार कार्ड", "राशन कार्ड", "मजदूरी प्रमाण पत्र"],
+      "Ayushman Card": ["आधार कार्ड", "राशन कार्ड", "परिवार का विवरण"],
+      "Driving License": ["आधार कार्ड", "पता प्रमाण", "फोटो"],
+      "Voter ID": ["आधार कार्ड", "पता प्रमाण", "पासपोर्ट साइज फोटो"],
+      "Scholarship": ["स्कूल सर्टिफिकेट", "आय प्रमाण पत्र", "बैंक डिटेल"]
+    };
+
+    // Get service from URL
+    const params = new URLSearchParams(window.location.search);
+    const selectedService = params.get("service") || "सेवा";
+
+    document.getElementById("headerTitle").textContent = `📄 ${selectedService}`;
+    document.getElementById("formHeading").textContent = `${selectedService} के लिए आवेदन`;
+    document.getElementById("serviceField").value = selectedService;
+
+    // Load documents
+    const docList = document.getElementById("documentList");
+    docList.innerHTML = "";
+    const docs = documentRequirements[selectedService];
+    if (docs) {
+      docs.forEach(doc => {
+        const li = document.createElement("li");
+        li.textContent = doc;
+        docList.appendChild(li);
+      });
+    } else {
+      docList.innerHTML = "<li>⛔ कोई दस्तावेज़ जानकारी नहीं मिली।</li>";
+    }
+
+    // Submission
+    document.getElementById("serviceForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      alert("✅ आपका आवेदन सबमिट हो गया!");
+      // Firebase upload/submit logic here
+    });
+  </script>
+</body>
+</html>
